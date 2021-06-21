@@ -1,0 +1,26 @@
+#version 330 core
+
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
+
+uniform float boxOffsetX;
+uniform float boxOffsetY;
+uniform float boxOffsetZ;
+
+uniform mat4 Transform;
+
+uniform mat4 Model;
+uniform mat4 View;
+uniform mat4 Projection;
+
+out vec4 vertexColour;
+out vec2 TexCoord;
+
+void main()
+{
+    gl_Position = Projection * View * Model * Transform * vec4(aPos, 1.0);
+    //gl_Position = boxTransform * vec4(aPos.x+boxOffsetX, aPos.y+boxOffsetY, aPos.z+boxOffsetZ, 1.0);
+    
+    vertexColour = vec4(0.5, 0.0, 0.0, 1.0);
+    TexCoord = aTexCoord;
+}

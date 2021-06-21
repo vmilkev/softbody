@@ -1,0 +1,18 @@
+#version 330 core
+
+in vec2 TexCoord;
+out vec4 FragColor;
+//in vec4 vertexColour;
+
+uniform float boxModifiedBlueColour;
+uniform float boxModifiedGreenColour;
+uniform float boxModifiedRedColour;
+
+uniform sampler2D texture_box1;
+
+void main()
+{
+	//FragColor = vertexColour;
+	//FragColor = vec4(0.0, boxModifiedGreenColour, 0.0, 1.0);
+	FragColor = texture(texture_box1, TexCoord);
+}

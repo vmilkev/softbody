@@ -1,0 +1,28 @@
+#version 330 core
+
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
+
+uniform float cubeOffsetX;
+uniform float cubeOffsetY;
+uniform float cubeOffsetZ;
+
+uniform mat4 Transform;
+
+uniform mat4 Model;
+uniform mat4 View;
+uniform mat4 Projection;
+uniform mat4 camera;
+
+out vec4 vertexColour;
+out vec2 TexCoord;
+
+void main()
+{
+    gl_Position = Projection * View * Model * Transform * vec4(aPos, 1.0);
+    //gl_Position = camera * cubeModel * vec4(aPos, 1.0);
+    //gl_Position = cubeTransform * vec4(aPos.x+cubeOffsetX, aPos.y+cubeOffsetY, aPos.z+cubeOffsetZ, 1.0);
+    
+    vertexColour = vec4(0.5, 0.0, 0.0, 1.0);
+    TexCoord = aTexCoord;
+}

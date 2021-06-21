@@ -1,0 +1,50 @@
+# Model dimention: should be 2 or 3
+3
+# Account cohesion (cohesive bonds): true or false
+true
+# Minimal grain radius [m]
+4.5e-3
+# Maximal grain radius [m]
+6.0e-3
+# Sample box width [m]
+0.0820
+# Sample box height [m]
+0.0830
+# Maximum allowable sample fabrication time (relevant for sample project) [sec]
+10.1
+# Porosity
+0.15
+# Constant piston displacement (approx.)[m/sec]
+3.0e-2
+# Piston size (square shape) [m]
+0.032
+# Time of mechanical testing (relevant for simulation project) [sec]
+1
+# Gravity (this value can be adjusted in case of a model was scaled-up) [m/sec2] 
+9.81
+# Normal grain stiffness [N/m]
+1.0e5
+# Tangential grain stiffness [N/m]
+1.0e5
+# Bond normal stiffness [N/m]
+1.0e5
+# Bond tangential stiffness [N/m]
+1.0e5
+# Sigma: maximal normal stress at bond rapture [N]
+1.50e2
+# Tau: maximal tangential stress at bond rapture [N]
+1.50e2
+# Grains density [kg/m3]
+2600
+# Standart deviation of Gauss distribution of grains radius in a sample [m]
+0.20e-3
+# Alpha - shape parameter in Weibull distribution: applied to bonds
+0.0
+# Betha - scale parameter in Weibull distribution: applied to bonds
+0.0
+# Record the results as a sequence of *.vtk files (logical parameter): 1 - do recording, 0 - do not recording
+1
+# Allowed error of sample equilibrium state (quality criteria for sample fabrication; lower is better): range = [0...1]
+0.20e-1
+# Use Delone bond rapture (yield) criterion
+0
