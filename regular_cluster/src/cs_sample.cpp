@@ -113,6 +113,8 @@ int Sample::RunSimulation(double time)
 
 int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record )
 {
+	/* Simulation of cluster growth without soft-body interaction (all cells stay attached to a cluster) */
+
 	RuntimeLog(runTimeFile, true, "Initiated growth in:  ", 0.0, false, false);
 
     double dt = 0.05;
@@ -130,14 +132,14 @@ int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record 
 		//std::cout<<"growth, at "<<sizeCluster<<std::endl;
 
         for ( size_t i = 0; i < sizeCluster; i++ ){
-            cells[i].growth(cells,dt);
+            cells[i].growth(cells,dt); /* pefrorming growth of existing cells */
         }
 		
 		//std::cout<<"new cell, at "<<sizeCluster<<std::endl;
 
         for ( size_t i = 0; i < sizeCluster; i++ ){
             if (cells[i].isElongating && !cells[i].isLinked){
-                cells.push_back( cells[i].addcell() );
+                cells.push_back( cells[i].addcell() ); /* division has happened, adding a new cell to the cluster */
 				newCell = true;
 			}
         }
@@ -1518,7 +1520,7 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 	std::ofstream wrtMRatio;
 
 	std::vector <double> _mechRatio_a; // temporal storage to collect mechRatio values.
-	double _mechRatio_i = 0.0; /*mech ratio at previous step*/
+	double _mechRatio_i = 1.0e10; /*mech ratio at previous step*/
 
 	RuntimeLog(runTimeFile, true, "Starting the dynamic relaxation:", 0, false, false);
 	RuntimeLog(runTimeFile, false, "Number of cells:", gr.size(), false, false, true);
@@ -1526,9 +1528,8 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 	RuntimeLog(runTimeFile, false, "Total timesteps:", stepNum, false, false, true);
 	RuntimeLog(runTimeFile, false, "Interval for contact list updates:", updContLst, false, false, true);
 	
-	if ( CheckProjType() ) {
+	//if ( CheckProjType() )
 		wrtMRatio.open(fileLocation, std::ios::out);
-	}
 
 	RuntimeLog(runTimeFile, false, "Interval for error value updates:", mRatTimeIntrv, false, false, true);
 	RuntimeLog(runTimeFile, false, "Allowed maximum value of relaxation cycles:", stepNum, false, false, true);
@@ -1635,7 +1636,7 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 		wBack.wV = wBack.wV + 0.5 * dt * wBack.wA;
 
 		/* calculate mech ratio, only for 'sample' project */
-		if (CheckProjType()) {
+		//if (CheckProjType()) {
 
 			double _sumOfNormF = 1.0;
 
@@ -1647,13 +1648,18 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 
 			if (step % mRatTimeIntrv == 0) {
 				double _mechRatio = accumulate(_mechRatio_a.begin(), _mechRatio_a.end(), 0.0) / _mechRatio_a.size();
-				mechRatio = (abs(_mechRatio - _mechRatio_i) / _mechRatio);
+				mechRatio = (abs(_mechRatio - _mechRatio_i) / _mechRatio_i);
 				_mechRatio_i = _mechRatio;
 				_mechRatio_a.clear();
 				if (wrtMRatio)
 					wrtMRatio << step << "  " << mechRatio << std::endl;
+
+				if ( mechRatio < 0.0001 ){ /* Mech. error does not changes significantly during some time */
+					RuntimeLog(runTimeFile, true, "Mechanical Equilibrium Ratio  ", mechRatio, false, false,true);
+					return 0;
+				}
 			}
-		}
+		//}
 
 		/*Set sum of forces acting on cell to 0*/
 		for (size_t i = 0; i < cells; i++) {

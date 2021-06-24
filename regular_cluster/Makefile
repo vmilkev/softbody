@@ -41,8 +41,8 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 
 clean:
 >$(RM) $(OBJDIR)/*.o $(OBJDIR)/*.d $(MAIN)
+>rm -rf $(EXMPL)/bin/*.exe $(EXMPL)/sample $(EXMPL)/simulation $(EXMPL)/*.log
 #>$(EXMPL)/clean_all.sh
-#>rm -r $(EXMPL)/bin/*.exe $(EXMPL)/sample $(EXMPL)/DEM_RUNTIME.txt
 
 depend: $(SRCS)
 >makedepend $(INCLUDES) $^

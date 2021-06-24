@@ -20,6 +20,7 @@ OBJDIR = ./lib
 SRCDIR = ./src
 BINDIR = ./bin
 INCLUDES = ./incl
+EXMPL = ./example_lin
 
 SRCS = $(SRCDIR)/dem.cpp $(SRCDIR)/Functions.cpp
 OBJS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SRCS))
@@ -40,6 +41,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 
 clean:
 >$(RM) $(OBJDIR)/*.o $(OBJDIR)/*.d $(MAIN)
+>rm -rf $(EXMPL)/bin/*.exe $(EXMPL)/sample $(EXMPL)/simulation $(EXMPL)/*.txt
 
 depend: $(SRCS)
 >makedepend $(INCLUDES) $^
