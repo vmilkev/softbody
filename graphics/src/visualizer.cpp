@@ -59,9 +59,9 @@ namespace oglu
         for (auto i = 0; i < grainNum; i++){
             glm::vec3 position(gdata[i][0], gdata[i][1], gdata[i][2]);
 
-            //std::cout<<"position = "<<position.x<<", "<<position.y<<", "<<position.z<<std::endl;
-            //std::cout<<"position (init) size = "<<gdata[i].size()<<std::endl;
-            //std::cout<<"position (init) = "<<gdata[i][0]<<", "<<gdata[i][1]<<", "<<gdata[i][2]<<std::endl;
+            // std::cout<<"position = "<<position.x<<", "<<position.y<<", "<<position.z<<std::endl;
+            // std::cout<<"position (init) size = "<<gdata[i].size()<<std::endl;
+            // std::cout<<"position (init) = "<<gdata[i][0]<<", "<<gdata[i][1]<<", "<<gdata[i][2]<<std::endl;
 
             glm::vec3 scaling(gdata[i][3], gdata[i][3], gdata[i][3]);
             glm::vec3 rotation(1.0f, 1.0f, 1.0f);
@@ -158,10 +158,10 @@ namespace oglu
                 }
             }
 
-/*                 std::cout<<"data[indSphere].positions.size() = "<<data[indSphere].positions.size()<<"; indSphere = "<<indSphere<<std::endl;
-                for (auto i = 0; i < data[indSphere].positions.size(); i++)
-                    std::cout<<"positions = "<<data[indSphere].positions[i].x<<", "<<data[indSphere].positions[i].y<<", "<<data[indSphere].positions[i].z<<std::endl;         
- */
+                //  std::cout<<"data[indSphere].positions.size() = "<<data[indSphere].positions.size()<<"; indSphere = "<<indSphere<<std::endl;
+                // for (auto i = 0; i < data[indSphere].positions.size(); i++)
+                //     std::cout<<"positions = "<<data[indSphere].positions[i].x<<", "<<data[indSphere].positions[i].y<<", "<<data[indSphere].positions[i].z<<std::endl;         
+
 
         }
 

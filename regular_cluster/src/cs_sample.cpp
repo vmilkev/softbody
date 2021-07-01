@@ -111,7 +111,7 @@ int Sample::RunSimulation(double time)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record )
+int Sample::SimulateGrowth2( double grwtime, double timeInterval, std::vector<Cell> &cells, std::vector<std::vector<Bond>> &b, bool record, std::string prType )
 {
 	/* Simulation of cluster growth without soft-body interaction (all cells stay attached to a cluster) */
 
@@ -121,17 +121,18 @@ int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record 
 
 	//size_t stepNum = (size_t)ceil(time / dt);
 	size_t step = 0;
-	size_t outputPeriod = 10;
+	size_t outputPeriod = 5;
 
 	bool newCell = false;
 
-    for ( size_t t = 0; t < time; t++ ){
+    for ( size_t t = 0; t < grwtime; t++ ){
 
         size_t sizeCluster = cells.size();
 
 		//std::cout<<"growth, at "<<sizeCluster<<std::endl;
 
         for ( size_t i = 0; i < sizeCluster; i++ ){
+			cells[i].correct_origin(); /* correct positions of origins due to soft body interactions */
             cells[i].growth(cells,dt); /* pefrorming growth of existing cells */
         }
 		
@@ -143,6 +144,11 @@ int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record 
 				newCell = true;
 			}
         }
+
+		SetBondsMatrix(b, cells);
+		FindBonds(b, cells, shape, scale);
+
+		DynamicRelaxation(timeInterval, cells, b, false, prType);
 
 /* 		if (newCell){
 			RuntimeLog(runTimeFile, false, "-------------- New iteration (time): ", t, false, false, true);
@@ -178,7 +184,7 @@ int Sample::SimulateGrowth2( std::vector<Cell> &cells, double time, bool record 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-int Sample::RunGrowthSimulation(double time)
+int Sample::RunGrowthSimulation(double grwtime, double simtime)
 {	
 	RuntimeLog(runTimeFile, true, "Growth simulation.", 0.0, false, false);
 
@@ -201,8 +207,8 @@ int Sample::RunGrowthSimulation(double time)
 		{
 	#pragma omp section
 			{
-				//relaxationFlag = SimulateGrowth2(aggregates, time, recordOutput);
-				relaxationFlag = SimulateGrowth(time, aggregates, b, recordOutput, type);
+				relaxationFlag = SimulateGrowth2(grwtime, simtime, aggregates, b, recordOutput, type);
+				//relaxationFlag = SimulateGrowth(grwtime, aggregates, b, recordOutput, type);
 			}
 	#pragma omp section
 			{
@@ -216,8 +222,8 @@ int Sample::RunGrowthSimulation(double time)
 		}
 	}
 	else{
-			//relaxationFlag = SimulateGrowth2(aggregates, time, recordOutput);
-			relaxationFlag = SimulateGrowth(time, aggregates, b, recordOutput, type);
+			relaxationFlag = SimulateGrowth2(grwtime, simtime, aggregates, b, recordOutput, type);
+			//relaxationFlag = SimulateGrowth(grwtime, aggregates, b, recordOutput, type);
 	}
 			
 
@@ -420,7 +426,7 @@ int Sample::ReadParametersFromFile(const char* paramFileName)
 			//exit(EXIT_FAILURE);
 		}
 		else{
-			if(sb.st_mode & S_IFDIR != 0)
+			if( sb.st_mode & (S_IFDIR != 0) )
 				return true;
 		}
 
@@ -1686,7 +1692,7 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 #endif
 
 		/*Force computation between cells*/
-#pragma omp parallel for 
+//#pragma omp parallel for 
 		for (size_t i = 0; i < cells; i++) {
 			for (auto j = gr[i].contactList.begin(); j != gr[i].contactList.end(); ++j) {
 				ForcesGrainCohesive3D(i, *j, gr, b, dt);
@@ -1701,7 +1707,7 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 #endif
 
 		/*Force computation between cells and walls*/
-#pragma omp parallel for
+//#pragma omp parallel for
 		for (size_t i = 0; i < cells; i++)
 			for (size_t w = 1; w <= wallsNum; w++)
 				ForcesWall3D(i, w, gr);
@@ -2036,7 +2042,14 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 
 	size_t g_sz = grainSnapshot.size() /* - (size_t) 1 */;
 
+	//std::cout<<"Inside PostProcGrainVisual 1"<<";  grainSnapshot.size() = "<<grainSnapshot.size()<<std::endl;
+
+	//RuntimeLog(runTimeFile, false, "Before write out!; g_sz = ", g_sz, false, false, true);
+
 	if ( grnSmf && (grnCount </* = */ g_sz) ) {
+
+		//RuntimeLog(runTimeFile, false, "Should write out!; g_sz = ", g_sz, false, false, true);
+		
 		std::vector <Cell> grn;
 		try
 		{
@@ -2072,6 +2085,7 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 		double scaler = std::min(_sizeX, _sizeY) * 0.5f;//grn[0].R;
 
 		for (i = 0; i < grainNum; i++){
+			//std::cout<<"Inside PostProcGrainVisual 2: grainNum = "<<grainNum<<"; grn[i].x = "<<grn[i].x<<std::endl;
 			tvect[0] = static_cast <float> ( grn[i].x / scaler );
 			tvect[1] = static_cast <float> ( grn[i].y / scaler );
 			tvect[2] = static_cast <float> ( grn[i].z / scaler );
@@ -2084,6 +2098,13 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 
 		std::swap(t_data, data);
 
+/*		size_t grainNum2 = data.size();
+		std::cout<<"BEFORE, grainNum = "<<grainNum2<<std::endl;
+ 		for (auto i = 0; i < grainNum2; i++){
+			std::cout<<"BEFORE, size = "<<data[i].size()<<std::endl;
+			std::cout<<"position (init) = "<<data[i][0]<<", "<<data[i][1]<<", "<<data[i][2]<<std::endl;
+		}
+ */
 		snapshotCounterG++;
 
 		if (!relaxationFlag) {
@@ -2523,6 +2544,15 @@ omp_set_num_threads(2);
 						accessLock = true;
 						renderSignal = false;
 					}
+					
+/*					size_t grainNum = grainData.size();
+					std::cout<<"AFTER, grainNum = "<<grainNum<<std::endl;
+ 					for (auto i = 0; i < grainNum; i++){
+						std::cout<<"AFTER, size = "<<grainData[i].size()<<std::endl;
+						std::cout<<"position (init) = "<<grainData[i][0]<<", "<<grainData[i][1]<<", "<<grainData[i][2]<<std::endl;
+					}
+ 					std::cout<<"grainSnapshot.empty() = "<<grainSnapshot.empty()<<"'; relaxationFlag = "<<relaxationFlag<<std::endl;
+*/
 			} while (!grainSnapshot.empty() || relaxationFlag);			
 			escSignal = true;
 		}
@@ -2531,7 +2561,7 @@ omp_set_num_threads(2);
 			oglu::visualizer scene;
 			scene.show(escSignal, accessLock, renderSignal, grainData);
 		}
-	}
+ }
 
 	return 0;
 }

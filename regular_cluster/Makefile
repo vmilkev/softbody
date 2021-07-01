@@ -4,15 +4,20 @@ UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
 
-CXX = icc
-#CXX = g++
+#CXX = icc
+CXX = g++
 
 OS = linux
 BINEXMPL = ./example_lin/bin
 
+# debug option for icc
 #CXXFLAGS = -g -O0 -qopenmp -traceback -check-pointers=rw -debug all -debug parallel -mcmodel=large -I${MKLROOT}/include -I../graphics/include -std=c++17 -D=$(OS) -traceback -Wall -qoverride-limits -MMD
-CXXFLAGS = -O3 -traceback -qopenmp -mcmodel=large -I${MKLROOT}/include -I../graphics/include -std=c++17 -D=$(OS) -MMD
-#CXXFLAGS = -O3 -fopenmp -I../graphics/include -std=c++17 -D $(OS) -MMD
+
+# release option for icc
+#CXXFLAGS = -O3 -traceback -qopenmp -mcmodel=large -I${MKLROOT}/include -I../graphics/include -std=c++17 -D=$(OS) -MMD
+
+# release option for g++
+CXXFLAGS = -O3 -fopenmp -I../graphics/include -D=$(OS) -MMD
 LNKFLAGS = -L/usr/local/lib -lglfw -lpthread -lGLEW -lGLU -lGL -lrt -lXrandr -lXxf86vm -lXi -lXinerama -lX11 -ldl -L../graphics/bin -loglu
 
 OBJDIR = ./lib

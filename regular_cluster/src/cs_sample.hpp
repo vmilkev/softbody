@@ -92,7 +92,7 @@ public:
     int RunSimulation(double time);
     int Finalize( std::string fileNameOutput );
     int RestoreSample(const char* paramFileName);
-    int RunGrowthSimulation(double time);
+    int RunGrowthSimulation(double grwtime, double simtime);
 
 private:
 
@@ -129,7 +129,7 @@ private:
     void RuntimeLog(std::string fileName, bool wrTime, std::string message, double someValue, bool makeFileOpen, bool makeFileClose, bool showValue = false);
     void SeedCells(double rMin, double rMax, double sizeD, double sizeH, double cellsNum, std::vector <Cell> &gr, double stdDev);
     int SimulateGrowth( double timeInterval, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, bool record, std::string prType );
-    int SimulateGrowth2( std::vector<Cell> &cells, double time, bool record );
+    int SimulateGrowth2( double grwtime, double timeInterval, std::vector<Cell> &cells, std::vector<std::vector<Bond>> &b, bool record, std::string prType );
 
 };
 

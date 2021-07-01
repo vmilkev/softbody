@@ -7,9 +7,9 @@
 # Sample box height [m]
 20e-1
 # Maximum allowable sample fabrication time (relevant for sample project) [sec]
-1.0e0
+1.0e1
 # Time of mechanical testing (relevant for simulation project) [sec]
-1.0e5
+2.0e3
 # Gravity (this value can be adjusted in case of a model was scaled-up) [m/sec2] 
 9.81
 # Normal grain stiffness [N/m]
@@ -35,6 +35,6 @@
 # Betha - scale parameter in Weibull distribution: applied to bonds
 0.0
 # Record the results as a sequence of *.vtk files (logical parameter): 2 - use 3d visualization, 1 - do recording, 0 - do not recording
-1
+2
 # Use Delone bond rapture (yield) criterion
 0
