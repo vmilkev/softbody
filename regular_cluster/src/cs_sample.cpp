@@ -113,19 +113,22 @@ int Sample::RunSimulation(double time)
 
 int Sample::SimulateGrowth2( double grwtime, double timeInterval, std::vector<Cell> &cells, std::vector<std::vector<Bond>> &b, bool record, std::string prType )
 {
-	/* Simulation of cluster growth without soft-body interaction (all cells stay attached to a cluster) */
 
 	RuntimeLog(runTimeFile, true, "Initiated growth in:  ", 0.0, false, false);
 
-    double dt = 0.05;
+    double dt = 0.04;
 
-	//size_t stepNum = (size_t)ceil(time / dt);
+	size_t stepNum = (size_t)ceil( grwtime / dt );
+
 	size_t step = 0;
-	size_t outputPeriod = 5;
+	size_t outputPeriod = (int)ceil(0.2 / sqrt(dt)); //5
 
 	bool newCell = false;
 
-    for ( size_t t = 0; t < grwtime; t++ ){
+		SetBondsMatrix(b, cells);
+		FindBonds(b, cells, shape, scale);
+
+    while (step < stepNum)/* for ( size_t t = 0; t < grwtime; t++ ) */{
 
         size_t sizeCluster = cells.size();
 
@@ -141,12 +144,13 @@ int Sample::SimulateGrowth2( double grwtime, double timeInterval, std::vector<Ce
         for ( size_t i = 0; i < sizeCluster; i++ ){
             if (cells[i].isElongating && !cells[i].isLinked){
                 cells.push_back( cells[i].addcell() ); /* division has happened, adding a new cell to the cluster */
+				UpdBonds(b, cells, shape, scale); /* update bonds doe to a new cell*/
 				newCell = true;
 			}
         }
 
-		SetBondsMatrix(b, cells);
-		FindBonds(b, cells, shape, scale);
+		//SetBondsMatrix(b, cells);
+		//FindBonds(b, cells, shape, scale);
 
 		DynamicRelaxation(timeInterval, cells, b, false, prType);
 
@@ -459,11 +463,22 @@ int Sample::FinalizeSampleProject(std::string paramFileName, std::vector <Cell> 
 {
 	RuntimeLog(runTimeFile, true, "Resulting cells' posotions: ", 0.0, false, false);
 	for (size_t i = 0; i < gr.size(); i++){
-		RuntimeLog(runTimeFile, false, "cell no ", i, false, false, true);
-		RuntimeLog(runTimeFile, false, "R = ", gr[i].R, false, false, true);
-		RuntimeLog(runTimeFile, false, "x = ", gr[i].x, false, false, true);
-		RuntimeLog(runTimeFile, false, "y = ", gr[i].x, false, false, true);
-		RuntimeLog(runTimeFile, false, "z = ", gr[i].x, false, false, true);
+		RuntimeLog(runTimeFile, false, "   cell no:", i+1, false, false, true);
+		RuntimeLog(runTimeFile, false, "       age:", gr[i].age, false, false, true);
+		RuntimeLog(runTimeFile, false, "         R:", gr[i].R, false, false, true);
+		RuntimeLog(runTimeFile, false, "         x:", gr[i].x, false, false, true);
+		RuntimeLog(runTimeFile, false, "         y:", gr[i].x, false, false, true);
+		RuntimeLog(runTimeFile, false, "         z:", gr[i].x, false, false, true);
+		RuntimeLog(runTimeFile, false, "   cell ID:", gr[i].name, false, false, true);
+		RuntimeLog(runTimeFile, false, " conf. num:", gr[i].conf_num, false, false, true);
+		RuntimeLog(runTimeFile, false, " conf. deg:", gr[i].conf_degree, false, false, true);
+		RuntimeLog(runTimeFile, false, "elongation:", gr[i].currentElongation, false, false, true);
+		RuntimeLog(runTimeFile, false, "is virtual:", gr[i].isVirtual, false, false, true);
+		RuntimeLog(runTimeFile, false, "growthRate:", gr[i].growthRate, false, false, true);
+		RuntimeLog(runTimeFile, false, "  isLinked:", gr[i].isLinked, false, false, true);
+		RuntimeLog(runTimeFile, false, " Linked ID:", gr[i].linkedID, false, false, true);
+		RuntimeLog(runTimeFile, false, "...........", 0, false, false, true);
+		RuntimeLog(runTimeFile, false, "...........", 0, false, false, true);
 	}
 
 	std::ofstream out(paramFileName, std::ios::out | std::ofstream::binary);
@@ -860,6 +875,129 @@ void Sample::ForcesWall3D(int i, int wall, std::vector <Cell> &gr)
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+void Sample::ForcesGrainCohesive3Dv2(int i, int j, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, double _dt)
+{
+	double rXji, rYji, rZji, rNorm, dn;
+	double Vxji, Vyji, Vzji, Vth, Xn, Yn, Zn, Xt, Yt, Zt, Vn, Vt;
+
+	double r = std::min(gr[i].R, gr[j].R);
+	double nu = 2 * sqrt((4. / 3.)*rho*M_PI*r*r*r*kn)*beta;
+	double nuBond = 2 * sqrt(b[i][j].M * b[i][j].kn)*beta;
+
+	// Compute distance between grains
+	rXji = gr[i].x - gr[j].x;
+	rYji = gr[i].y - gr[j].y;
+	rZji = gr[i].z - gr[j].z;
+	rNorm = sqrt(rXji*rXji + rYji*rYji + rZji*rZji);
+	dn = rNorm - (gr[i].R + gr[j].R);
+
+	double dnBond;
+	double Fn = 0.;
+	double Ft = 0.;
+
+	if (b[i][j].isActive == true)
+	{
+		dnBond = rNorm - (gr[i].R + gr[j].R + b[i][j].gap); // bond overlap
+
+		Vxji = gr[i].Vx - gr[j].Vx;  // sign convention: v<0 --> particles approach each other
+		Vyji = gr[i].Vy - gr[j].Vy; // sign convention: v<0 --> particles approach each other
+		Vzji = gr[i].Vz - gr[j].Vz;
+		Vth = gr[i].Vth - gr[j].Vth;
+
+		Xn = rXji / rNorm;
+		Yn = rYji / rNorm;
+		Zn = rZji / rNorm;
+
+		Xt = -Yn;
+		Yt = Xn;
+		Zt = -1.0;
+
+		Vn = Vxji*Xn + Vyji*Yn + Vzji*Zn; // sign convention: vn<0 --> normal distance is decreasing
+		Vt = Vxji*Xt + Vyji*Yt + Vzji*Zt - ((gr[i].R - dn / 2)*gr[i].Vth + (gr[j].R - dn / 2)*gr[j].Vth);
+
+		double anglei = gr[i].th + b[i][j].alpha0;
+		double anglej = gr[j].th + b[j][i].alpha0;
+
+		double angleiXY = gr[i].th + b[i][j].alpha0XY;
+		double anglejXY = gr[j].th + b[j][i].alpha0XY;
+
+		double angleiYZ = gr[i].th + b[i][j].alpha0YZ;
+		double anglejYZ = gr[j].th + b[j][i].alpha0YZ;
+
+		// Bond elongation
+		double I1I2X = -gr[i].R * cos(anglei) + gr[j].R * cos(anglej) - rXji;
+		double I1I2Y = -gr[i].R * sin(anglei) + gr[j].R * sin(anglej) - rYji;
+		double I1I2Z = -gr[i].R * cos(angleiYZ) + gr[j].R * cos(anglejYZ) - rZji;
+
+		// Update global position of interaction points
+		b[i][j].xI = gr[i].x + gr[i].R * cos(angleiXY);
+		b[i][j].yI = gr[i].y + gr[i].R * sin(angleiXY);
+		b[i][j].zI = gr[i].z + gr[i].R * cos(angleiYZ);
+
+		b[j][i].xI = gr[j].x + gr[j].R * cos(anglejXY);
+		b[j][i].yI = gr[j].y + gr[j].R * sin(anglejXY);
+		b[i][j].zI = gr[j].z + gr[j].R * cos(angleiYZ);
+
+		// Bond shearing distance
+		double I1I2T = I1I2X*Xt + I1I2Y*Yt + I1I2Z*Zt;
+
+		double gammaij = gr[i].th - gr[j].th;
+
+		if (dn >= 0.) {
+			Fn = -b[i][j].kn*dnBond - nuBond*Vn;
+		}
+		else {
+			Fn = -kn*dn - nu*Vn;
+			if (Fn < 0) Fn = 0.;
+		}
+
+		/*Ft = -b[i][j].kt*I1I2T;*/ //this variant does not works, needs debugging!
+		Ft = fabs(b[i][j].kt*Vt);
+		if (fabs(Ft) > mu*fabs(Fn)) Ft = mu*fabs(Fn);
+		if (Vt > 0.) Ft = -Ft;/**/
+
+
+		double couple = -b[i][j].M*gammaij;
+
+		b[i][j].contactForce = fabs(Ft) + fabs(Fn);
+
+		gr[i].Fx += Fn*Xn + Ft*Xt;
+		gr[i].Fy += Fn*Yn + Ft*Yt;
+		gr[i].Fz += Fn*Zn + Ft*Zt;
+		gr[j].Fx += - Fn*Xn - Ft*Xt;
+		gr[j].Fy += - Fn*Yn - Ft*Yt;
+		gr[j].Fz += - Fn*Zn - Ft*Zt;
+
+		gr[i].Fth += -Ft*gr[i].R - couple;
+		gr[j].Fth += -Ft*gr[j].R + couple;
+
+		double sigmaStress = fabs(Fn);
+		double tauStress = fabs(Ft);
+		b[i][j].contactForce = sigmaStress + tauStress;
+
+		// Check yield criterion
+		double rupture = -1;
+
+		if (deloneRapture)
+			rupture = (Ft / b[i][j].tau)*(Ft / b[i][j].tau) + (couple / b[i][j].YM)*(couple / b[i][j].YM) + (Fn / b[i][j].sigma) - 1;
+		else {
+			if (sigmaStress >= b[i][j].sigma || tauStress >= b[i][j].tau)
+				rupture = 0.;
+		}
+
+		if (rupture >= 0.) {
+			b[i][j].isActive = b[j][i].isActive = false;
+		}
+		
+		return;
+	}
+	else
+		ForcesGrain3D(i, j, gr, _dt);
+
+	return;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 void Sample::ForcesGrainCohesive3D(int i, int j, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, double _dt)
 {
@@ -1053,6 +1191,7 @@ void Sample::ForcesGrainCohesive3D(int i, int j, std::vector <Cell> &gr, std::ve
 				rupture = 0.;
 		}
 
+		//rupture = -1.0;
 		if (rupture >= 0.) {
 			b[i][j].isActive = b[j][i].isActive = false;
 		}
@@ -1108,7 +1247,8 @@ void Sample::IdentifyCohesiveBonds(int i, int j, std::vector <Cell> &gr, std::ve
 		b[j][i].alpha0YZ = alphaYZ + M_PI - gr[j].th;
 
 		b[i][j].isActive = true;
-		b[i][j].gap = 0.0;
+
+		b[i][j].gap = gap - dn;
 
 		b[i][j].rigid = false;
 		if ( gr[i].isLinked && gr[j].isLinked ){
@@ -1149,6 +1289,57 @@ void Sample::SetBondsMatrix(std::vector<std::vector<Bond>> &b, std::vector <Cell
 		b.push_back(vectb);
 	}
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+void Sample::UpdBonds(std::vector<std::vector<Bond>> &b, std::vector <Cell> &gr, double shape, double scale)
+{
+	// Updates bonds for one additional cell
+
+	// increase the list of existing bonds to account the new cell
+	for ( size_t i = 0; i < b.size(); i++ ){
+		Bond b0;
+		b[i].push_back(b0);
+	}
+
+	// we have increased the number of cells,
+	// therefore, we have to add a new set of potential bonds
+	// for a new cell
+	std::vector<Bond> vectb;
+	for (size_t j = 0; j < gr.size(); j++) {
+		Bond b0;
+		vectb.push_back(b0);
+	}
+	b.push_back(vectb);
+
+	//----------------------------------------------------------------------
+
+	double randValues[2];
+	bool notWeibull = false;
+	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+	std::default_random_engine generator(seed);
+
+	if (shape == 0.0 || scale == 0.0) {
+		shape = 1.0;
+		scale = 1.0;
+		notWeibull = true;
+		randValues[0] = 1.0;
+		randValues[1] = 1.0;
+	}
+	std::weibull_distribution<double> distribution(shape, scale);
+
+	for (size_t i = 0; i < gr.size(); i++) {
+		size_t j = gr.size() - 1; // the last one is a new cell
+		b[i][j].isActive = false;
+		if (!notWeibull) {
+			randValues[0] = distribution(generator);
+			randValues[1] = distribution(generator);
+		}
+		IdentifyCohesiveBonds(i, j, gr, b, randValues);
+	}
+
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -1513,17 +1704,19 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 
 	size_t step = 0;
 
-	std::string fileLocation;
+	std::string fileLocation, fileLocation2;
 
 	#ifdef _WIN64
 	fileLocation = prType + "\\" + "Equilibrium_history.txt";
+	fileLocation2 = prType + "\\" + "Equilibrium_history_all.txt";
 	#endif
 
 	#ifdef linux
 	fileLocation = prType + "/" + "Equilibrium_history.txt";
+	fileLocation2 = prType + "/" + "Equilibrium_history_all.txt";
 	#endif
 
-	std::ofstream wrtMRatio;
+	std::ofstream wrtMRatio, wrtMRatio2;
 
 	std::vector <double> _mechRatio_a; // temporal storage to collect mechRatio values.
 	double _mechRatio_i = 1.0e10; /*mech ratio at previous step*/
@@ -1535,7 +1728,8 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 	RuntimeLog(runTimeFile, false, "Interval for contact list updates:", updContLst, false, false, true);
 	
 	//if ( CheckProjType() )
-		wrtMRatio.open(fileLocation, std::ios::out);
+	wrtMRatio.open( fileLocation, std::ios::out );
+	wrtMRatio2.open( fileLocation2, std::ios::out | std::ios::app );
 
 	RuntimeLog(runTimeFile, false, "Interval for error value updates:", mRatTimeIntrv, false, false, true);
 	RuntimeLog(runTimeFile, false, "Allowed maximum value of relaxation cycles:", stepNum, false, false, true);
@@ -1641,30 +1835,32 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 		wFront.wV = wFront.wV + 0.5 * dt * wFront.wA;
 		wBack.wV = wBack.wV + 0.5 * dt * wBack.wA;
 
-		/* calculate mech ratio, only for 'sample' project */
+		/* calculate mech ratio, NOT only for 'sample' project */
 		//if (CheckProjType()) {
 
-			double _sumOfNormF = 1.0;
+		double _sumOfNormF = 1.0;
 
-			for (size_t i = 0; i < cells; i++) {
-				gr[i].sumOfNormF = sqrt(gr[i].Fx*gr[i].Fx + gr[i].Fy*gr[i].Fy + gr[i].Fz*gr[i].Fz) + sqrt(gr[i].Fth*gr[i].Fth);
-				_sumOfNormF += gr[i].sumOfNormF;
+		for (size_t i = 0; i < cells; i++) {
+			gr[i].sumOfNormF = sqrt(gr[i].Fx*gr[i].Fx + gr[i].Fy*gr[i].Fy + gr[i].Fz*gr[i].Fz) + sqrt(gr[i].Fth*gr[i].Fth);
+			_sumOfNormF += gr[i].sumOfNormF;
+		}
+		_mechRatio_a.push_back(_sumOfNormF);
+
+		if (step % mRatTimeIntrv == 0) {
+			double _mechRatio = accumulate(_mechRatio_a.begin(), _mechRatio_a.end(), 0.0) / _mechRatio_a.size();
+			mechRatio = (abs(_mechRatio - _mechRatio_i) / _mechRatio_i);
+			_mechRatio_i = _mechRatio;
+			_mechRatio_a.clear();
+			if (wrtMRatio){
+				wrtMRatio << step << "  " << mechRatio << std::endl;
+				wrtMRatio2 << mechRatio << std::endl;
 			}
-			_mechRatio_a.push_back(_sumOfNormF);
 
-			if (step % mRatTimeIntrv == 0) {
-				double _mechRatio = accumulate(_mechRatio_a.begin(), _mechRatio_a.end(), 0.0) / _mechRatio_a.size();
-				mechRatio = (abs(_mechRatio - _mechRatio_i) / _mechRatio_i);
-				_mechRatio_i = _mechRatio;
-				_mechRatio_a.clear();
-				if (wrtMRatio)
-					wrtMRatio << step << "  " << mechRatio << std::endl;
-
-				if ( mechRatio < 0.0001 ){ /* Mech. error does not changes significantly during some time */
-					RuntimeLog(runTimeFile, true, "Mechanical Equilibrium Ratio  ", mechRatio, false, false,true);
-					return 0;
-				}
+			if ( mechRatio < 0.00001 ){ /* Mech. error does not changes significantly during some time */
+				RuntimeLog(runTimeFile, true, "Mechanical Equilibrium Ratio  ", mechRatio, false, false,true);
+				return 0;
 			}
+		}
 		//}
 
 		/*Set sum of forces acting on cell to 0*/
@@ -1695,7 +1891,8 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 //#pragma omp parallel for 
 		for (size_t i = 0; i < cells; i++) {
 			for (auto j = gr[i].contactList.begin(); j != gr[i].contactList.end(); ++j) {
-				ForcesGrainCohesive3D(i, *j, gr, b, dt);
+				ForcesGrainCohesive3Dv2(i, *j, gr, b, dt);
+				//ForcesGrainCohesive3D(i, *j, gr, b, dt);
 			}
 		}
 
@@ -1766,10 +1963,6 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 		t7_start = chrono::steady_clock::now();
 #endif
 
-		/* correct cells' origins */
-		for (size_t i = 0; i < cells; i++)
-			gr[i].correct_origin();
-
 		/* record the results of simulation */
 		if (step%outputPeriod == 0 && record)
 			GetSnapshots(gr, b);
@@ -1793,6 +1986,13 @@ int Sample::DynamicRelaxation(double timeInterval, std::vector <Cell> &gr, std::
 
 		step++;
 	}
+
+	wrtMRatio.close();
+	wrtMRatio2.close();
+
+	/* correct cells' origins */
+	for (size_t i = 0; i < cells; i++)
+		gr[i].correct_origin();
 
 #ifdef DEBUG
 	RuntimeLog(runTimeFile, false, "t1:", t1, false, false, true);
@@ -2042,14 +2242,8 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 
 	size_t g_sz = grainSnapshot.size() /* - (size_t) 1 */;
 
-	//std::cout<<"Inside PostProcGrainVisual 1"<<";  grainSnapshot.size() = "<<grainSnapshot.size()<<std::endl;
-
-	//RuntimeLog(runTimeFile, false, "Before write out!; g_sz = ", g_sz, false, false, true);
-
 	if ( grnSmf && (grnCount </* = */ g_sz) ) {
 
-		//RuntimeLog(runTimeFile, false, "Should write out!; g_sz = ", g_sz, false, false, true);
-		
 		std::vector <Cell> grn;
 		try
 		{
@@ -2085,7 +2279,7 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 		double scaler = std::min(_sizeX, _sizeY) * 0.5f;//grn[0].R;
 
 		for (i = 0; i < grainNum; i++){
-			//std::cout<<"Inside PostProcGrainVisual 2: grainNum = "<<grainNum<<"; grn[i].x = "<<grn[i].x<<std::endl;
+
 			tvect[0] = static_cast <float> ( grn[i].x / scaler );
 			tvect[1] = static_cast <float> ( grn[i].y / scaler );
 			tvect[2] = static_cast <float> ( grn[i].z / scaler );
@@ -2098,13 +2292,6 @@ int Sample::PostProcGrainVisual(std::vector <std::vector <float> > &data)
 
 		std::swap(t_data, data);
 
-/*		size_t grainNum2 = data.size();
-		std::cout<<"BEFORE, grainNum = "<<grainNum2<<std::endl;
- 		for (auto i = 0; i < grainNum2; i++){
-			std::cout<<"BEFORE, size = "<<data[i].size()<<std::endl;
-			std::cout<<"position (init) = "<<data[i][0]<<", "<<data[i][1]<<", "<<data[i][2]<<std::endl;
-		}
- */
 		snapshotCounterG++;
 
 		if (!relaxationFlag) {

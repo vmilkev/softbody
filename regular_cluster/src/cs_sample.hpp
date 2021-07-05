@@ -106,8 +106,10 @@ private:
     int ForcesGrain3D(int i, int j, std::vector <Cell> &gr, double _dt);
     void ForcesWall3D(int i, int wall, std::vector <Cell> &gr);
     void ForcesGrainCohesive3D(int i, int j, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, double _dt);
+    void ForcesGrainCohesive3Dv2(int i, int j, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, double _dt);
     void IdentifyCohesiveBonds(int i, int j, std::vector <Cell> &gr, std::vector<std::vector<Bond>> &b, double *randValues);
     void SetBondsMatrix(std::vector<std::vector<Bond>> &b, std::vector <Cell> &gr);
+    void UpdBonds(std::vector<std::vector<Bond>> &b, std::vector <Cell> &gr, double shape, double scale);
     void FindBonds(std::vector<std::vector<Bond>> &b, std::vector <Cell> &gr, double shape, double scale);
     void IsBallInDomain(std::vector <Cell> &gr);
     void ClearForces(std::vector <Cell> &gr);

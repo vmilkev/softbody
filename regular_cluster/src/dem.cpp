@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 		#endif
 	
 		S.Init( "sample_runtime.log", argv[1] );
-		S.SetSample(3); // start with one cell
+		S.SetSample(1); // start with one cell
 		S.RunSimulation( S.samplTime );
 	}
 	else {

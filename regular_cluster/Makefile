@@ -13,11 +13,12 @@ BINEXMPL = ./example_lin/bin
 # debug option for icc
 #CXXFLAGS = -g -O0 -qopenmp -traceback -check-pointers=rw -debug all -debug parallel -mcmodel=large -I${MKLROOT}/include -I../graphics/include -std=c++17 -D=$(OS) -traceback -Wall -qoverride-limits -MMD
 
-# release option for icc
+# release option for icc; NOTE: Sample::RunVisualPostProcessing() does not work correctly if 01-03 option is set!
 #CXXFLAGS = -O3 -traceback -qopenmp -mcmodel=large -I${MKLROOT}/include -I../graphics/include -std=c++17 -D=$(OS) -MMD
 
 # release option for g++
 CXXFLAGS = -O3 -fopenmp -I../graphics/include -D=$(OS) -MMD
+
 LNKFLAGS = -L/usr/local/lib -lglfw -lpthread -lGLEW -lGLU -lGL -lrt -lXrandr -lXxf86vm -lXi -lXinerama -lX11 -ldl -L../graphics/bin -loglu
 
 OBJDIR = ./lib

@@ -6,10 +6,10 @@
 20e-1
 # Sample box height [m]
 20e-1
-# Maximum allowable sample fabrication time (relevant for sample project) [sec]
+# Maximum allowable dynamic relaxation time [sec]
 1.0e1
-# Time of mechanical testing (relevant for simulation project) [sec]
-2.0e3
+# Growth time [sec]
+1.0e2
 # Gravity (this value can be adjusted in case of a model was scaled-up) [m/sec2] 
 9.81
 # Normal grain stiffness [N/m]
